@@ -1,12 +1,13 @@
 import path from 'path';
+import fs from 'fs';
 
 export default class Manifest {
-    constructor(options = {}) {
+    constructor(options = {}, config = {}) {
         this.options = Object.assign(
             {
                 name: 'webApp',
                 short_name: 'Web App',
-                description: '',
+                description: 'a web app',
                 icons: [
                     {
                         src: '/images/icons-192.png',
@@ -24,20 +25,26 @@ export default class Manifest {
                 display: 'standalone',
                 scope: '/',
                 theme_color: '#fff',
+                // the native app install prompt will be shown or not be shown
+                related_applications: false,
+                prefer_related_applications: false,
             },
             options,
         );
+        this.config = Object.assign(
+            {
+                publicPath: './',
+            },
+            config,
+        );
+        this.outputPath = '';
     }
     apply(compiler) {
-        compiler.hooks.done.tap('Hello World Plugin', stats => {
-            console.log(
-                '\n\n ************* \n Hello World! \n ************* \n\n',
-            );
-        });
+        // console.log(`\n\n ************* \n
+        //         ${compiler.options.output.path}
+        //     \n\n ************* \n`);
 
-        console.log('\n\n ************* \n');
-        console.log(this.constructor.name);
-        console.log('\n\n ************* \n');
+        this.outputPath = compiler.options.output.path;
 
         compiler.hooks.compilation.tap(this.constructor.name, compilation => {
             // This is set in html-webpack-plugin pre-v4.
@@ -55,7 +62,7 @@ export default class Manifest {
             html_hook.tapAsync(
                 this.constructor.name,
                 (htmlPluginData, callback) => {
-                    this.addTag(htmlPluginData, compilation).then(data => {
+                    this.addTag(htmlPluginData).then(data => {
                         callback(null, data);
                     });
                 },
@@ -65,7 +72,8 @@ export default class Manifest {
         compiler.hooks.emit.tapAsync(
             this.constructor.name,
             (compilation, callback) => {
-                let file_name = 'test__manifest';
+                this.setIcons(compilation);
+                let file_name = './manifest.json';
                 this.addFileToAssets(file_name, compilation).then(_ => {
                     callback();
                 });
@@ -82,7 +90,7 @@ export default class Manifest {
             };
         });
     }
-    addTag(htmlPluginData, compilation) {
+    addTag(htmlPluginData) {
         const { html } = htmlPluginData;
         if (!html.includes('</head>')) return Promise.resolve(htmlPluginData);
 
@@ -96,7 +104,8 @@ export default class Manifest {
     }
     getTags() {
         let tags = [
-            `<meta name="theme-color" content="${this.options.theme_color}">`,
+            `<link rel="manifest" href="./manifest.json">
+            <meta name="theme-color" content="${this.options.theme_color}">`,
             // `<link rel="icon" sizes="192x192" href="icon.png">`,
             // `<link rel="apple-touch-icon" href="ios-icon.png">`,
             `<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">`,
@@ -116,5 +125,30 @@ export default class Manifest {
             tags.push(`<link rel="apple-touch-icon" href="${app_tag.src}">`);
 
         return tags;
+    }
+    setIcons(compilation) {
+        this.options.icons = this.options.icons
+            .filter(item => {
+                let src = item.src;
+                if (!fs.existsSync(src)) {
+                    console.log(`${src} file not exit!`);
+                    return false;
+                }
+                return true;
+            })
+            .map(item => {
+                let src = item.src;
+                let filename = this.config.publicPath + path.basename(src),
+                    fileData = fs.readFileSync(src);
+
+                compilation.assets[filename] = {
+                    source: _ => fileData,
+                    size: _ => fileData.length,
+                };
+                return {
+                    ...item,
+                    src: filename,
+                };
+            });
     }
 }
