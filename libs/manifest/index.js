@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs';
+import assert from 'assert';
 
 export default class Manifest {
     constructor(options = {}, config = {}) {
@@ -12,13 +13,13 @@ export default class Manifest {
                     {
                         src: '/images/icons-192.png',
                         type: 'image/png',
-                        sizes: '192x192',
+                        sizes: '192x192'
                     },
                     {
                         src: '/images/icons-512.png',
                         type: 'image/png',
-                        sizes: '512x512',
-                    },
+                        sizes: '512x512'
+                    }
                 ],
                 start_url: '/?source=pwa',
                 background_color: '#fff',
@@ -27,15 +28,15 @@ export default class Manifest {
                 theme_color: '#fff',
                 // the native app install prompt will be shown or not be shown
                 related_applications: false,
-                prefer_related_applications: false,
+                prefer_related_applications: false
             },
-            options,
+            options
         );
         this.config = Object.assign(
             {
-                publicPath: './',
+                publicPath: './'
             },
-            config,
+            config
         );
         this.outputPath = '';
     }
@@ -48,37 +49,27 @@ export default class Manifest {
 
         compiler.hooks.compilation.tap(this.constructor.name, compilation => {
             // This is set in html-webpack-plugin pre-v4.
-            let html_hook =
-                compilation.hooks.htmlWebpackPluginAfterHtmlProcessing;
+            let html_hook = compilation.hooks.htmlWebpackPluginAfterHtmlProcessing;
 
             if (!html_hook) {
-                const [HtmlWebpackPlugin] = compiler.options.plugins.filter(
-                    plugin => plugin.constructor.name === 'HtmlWebpackPlugin',
-                );
-                html_hook = HtmlWebpackPlugin.constructor.getHooks(compilation)
-                    .beforeEmit;
+                const [HtmlWebpackPlugin] = compiler.options.plugins.filter(plugin => plugin.constructor.name === 'HtmlWebpackPlugin');
+                html_hook = HtmlWebpackPlugin.constructor.getHooks(compilation).beforeEmit;
             }
 
-            html_hook.tapAsync(
-                this.constructor.name,
-                (htmlPluginData, callback) => {
-                    this.addTag(htmlPluginData).then(data => {
-                        callback(null, data);
-                    });
-                },
-            );
+            html_hook.tapAsync(this.constructor.name, (htmlPluginData, callback) => {
+                this.addTag(htmlPluginData).then(data => {
+                    callback(null, data);
+                });
+            });
         });
 
-        compiler.hooks.emit.tapAsync(
-            this.constructor.name,
-            (compilation, callback) => {
-                this.setIcons(compilation);
-                let file_name = './manifest.json';
-                this.addFileToAssets(file_name, compilation).then(_ => {
-                    callback();
-                });
-            },
-        );
+        compiler.hooks.emit.tapAsync(this.constructor.name, (compilation, callback) => {
+            this.setIcons(compilation);
+            let file_name = './manifest.json';
+            this.addFileToAssets(file_name, compilation).then(_ => {
+                callback();
+            });
+        });
     }
     addFileToAssets(filename, compilation) {
         // filename = path.resolve(compilation.compiler.context, filename);
@@ -86,7 +77,7 @@ export default class Manifest {
             let file_content = JSON.stringify(this.options, null, 2);
             compilation.assets[filename] = {
                 source: _ => file_content,
-                size: _ => file_content.length,
+                size: _ => file_content.length
             };
         });
     }
@@ -95,10 +86,7 @@ export default class Manifest {
         if (!html.includes('</head>')) return Promise.resolve(htmlPluginData);
 
         let tags = this.getTags();
-        htmlPluginData.html = html.replace(
-            '</head>',
-            tags.concat('</head>').join('\n'),
-        );
+        htmlPluginData.html = html.replace('</head>', tags.concat('</head>').join('\n'));
 
         return Promise.resolve(htmlPluginData);
     }
@@ -110,19 +98,18 @@ export default class Manifest {
             // `<link rel="apple-touch-icon" href="ios-icon.png">`,
             `<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">`,
             `<meta name="apple-mobile-web-app-capable" content="yes">`,
-            `<meta name="apple-mobile-web-app-title" content="${this.options.name}">`,
+            `<meta name="apple-mobile-web-app-title" content="${this.options.name}">`
         ].concat(
             this.options.icons.map(item => {
                 return `<link rel="icon" sizes="${item.sizes}" href="${item.src}">`;
-            }),
+            })
         );
         const max = Math.max(...this.options.icons.map(i => parseInt(i.sizes))),
             app_tag = this.options.icons.find(i => {
                 let val = parseInt(i.sizes);
                 return val === max;
             });
-        app_tag &&
-            tags.push(`<link rel="apple-touch-icon" href="${app_tag.src}">`);
+        app_tag && tags.push(`<link rel="apple-touch-icon" href="${app_tag.src}">`);
 
         return tags;
     }
@@ -143,11 +130,11 @@ export default class Manifest {
 
                 compilation.assets[filename] = {
                     source: _ => fileData,
-                    size: _ => fileData.length,
+                    size: _ => fileData.length
                 };
                 return {
                     ...item,
-                    src: filename,
+                    src: filename
                 };
             });
     }

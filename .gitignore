@@ -2,10 +2,9 @@
 
 .vscode
 .idea
-
-bower_components
-
-node_modules
+.nyc_output/
+bower_components/
+node_modules/
 npm-debug.log
 /tmp
 
